@@ -1,7 +1,12 @@
-obj-m += hack_open.o
+obj-m = hack_open.o
+KERNEL = $(shell uname -r)
+PWD = $(shell pwd)
 
 all:
-	make -C /lib/modules/$(shell uname -r)/build M=$(pwd) modules
+	make -C /lib/modules/$(KERNEL)/build M=$(PWD) modules
+
+example:
+	gcc -Wall -g example.c -o example
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=$(pwd) clean
+	make -C /lib/modules/$(KERNEL)/build M=$(PWD) clean
