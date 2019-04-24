@@ -1,3 +1,9 @@
+/*
+ *	hack_open.c
+ *
+ * 		PoC of overriding open(2) using a LKM
+ */
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -6,12 +12,15 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alan <ex0dus@codemuch.tech>");
 MODULE_VERSION("0.0.1");
-MODULE_DESCRIPTION("We hack the kernel");
+MODULE_DESCRIPTION("PoC for overriding open(2)");
 
+/* defines the location in memory where our system call table exists*/
+// TODO: use ELF sections?
 unsigned long *sys_call_table = (unsigned long) 0xffffffffbbc00180;
 
 /* This defines a pointer to the real open() syscall */
 asmlinkage int (*old_open)(const char *filename, int flags, int mode);
+
 
 /* enable use to memory page and write to it */
 int
@@ -20,8 +29,10 @@ set_addr_rw(long unsigned int _addr)
     unsigned int level;
     pte_t *pte = lookup_address(_addr, &level);
 
+	/* enable write */
     if (pte->pte &~ _PAGE_RW) pte->pte |= _PAGE_RW;
 }
+
 
 /* ensure that when cleanup occurs, make page write-protected */
 int
@@ -33,6 +44,7 @@ set_addr_ro(long unsigned int _addr)
     pte->pte = pte->pte &~_PAGE_RW;
 }
 
+
 asmlinkage int
 new_open(const char *filename, int flags, int mode)
 {
@@ -43,6 +55,7 @@ new_open(const char *filename, int flags, int mode)
     /* give execution BACK to the original syscall */
     return (*old_open)(filename, flags, mode);
 }
+
 
 static int __init
 init(void)
@@ -73,6 +86,7 @@ cleanup(void)
     printk(KERN_INFO "We are now leaving Kernel Town! Thanks for the stay!\n");
     return;
 }
+
 
 module_init(init);
 module_exit(cleanup);
